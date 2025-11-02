@@ -48,6 +48,7 @@ GRUB_CFG = $(SYSROOT_DIR)/boot/grub/grub.cfg
 all: $(OS_ISO)
 
 # 1. Membuat OS ISO
+#    PENTING: Ini sekarang tergantung pada KERNEL_BIN dan GRUB_CFG
 $(OS_ISO): $(KERNEL_BIN) $(GRUB_CFG)
 	@echo "Membuat ISO..."
 	@mkdir -p $(SYSROOT_DIR)/boot/grub
@@ -62,14 +63,12 @@ $(KERNEL_BIN): $(OBJ_FILES)
 	@$(LD) $(LDFLAGS) -o $(KERNEL_BIN) $(BUILD_DIR)/src/arch/x86/boot.o $(filter-out $(BUILD_DIR)/src/arch/x86/boot.o, $(OBJ_FILES))
 
 # 3. Aturan kompilasi C++ (.cpp -> .o)
-#    INI ADALAH ATURAN YANG DIPERBAIKI
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.cpp
 	@echo "Kompilasi C++: $<"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 # 4. Aturan assembly (.asm -> .o)
-#    INI ADALAH ATURAN YANG DIPERBAIKI
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.asm
 	@echo "Assembly: $<"
 	@mkdir -p $(dir $@)
