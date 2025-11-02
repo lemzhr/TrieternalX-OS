@@ -1,10 +1,10 @@
 /* File: src/kernel/kernel.cpp */
 
 #include "vga.h"
-#include "gdt.h"
-#include "interrupts.h"
-#include "keyboard.h"
-#include "pic.h"
+#include "gdt.h"        // <-- Memastikan GDT di-include
+#include "interrupts.h" // <-- Memastikan IDT di-include
+#include "keyboard.h"   // <-- Memastikan Keyboard di-include
+#include "pic.h"        // <-- Memastikan PIC di-include
 
 /*
  * ==========================================================================
