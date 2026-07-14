@@ -1,29 +1,58 @@
-/* File: src/include/gdt.h */
+
 #ifndef GDT_H
 #define GDT_H
 
 #include "types.h"
 #include <stdint.h>
 
-// Struktur untuk satu entri GDT
 struct gdt_entry_t
 {
-    uint16_t limit_low;    // 16 bit limit
-    uint16_t base_low;     // 16 bit base
-    uint8_t base_middle;   // 8 bit base
-    uint8_t access;        // Bendera akses (tipe, ring, dll.)
-    uint8_t granularity;   // Limit (lanjutan) dan bendera granularitas
-    uint8_t base_high;     // 8 bit base
-} __attribute__((packed)); // Mencegah compiler mengubah padding
-
-// Struktur untuk GDT pointer
-struct gdt_ptr_t
-{
-    uint16_t limit; // Ukuran GDT - 1
-    uint32_t base;  // Alamat dari array gdt_entry_t
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t base_middle;
+    uint8_t access;
+    uint8_t granularity;
+    uint8_t base_high;
 } __attribute__((packed));
 
-// Fungsi inisialisasi GDT
-void init_gdt();
+struct gdt_ptr_t
+{
+    uint16_t limit;
+    uint32_t base;
+} __attribute__((packed));
 
-#endif // GDT_H
+struct tss_entry_t
+{
+    uint32_t link;
+    uint32_t esp0;
+    uint32_t ss0;
+    uint32_t esp1;
+    uint32_t ss1;
+    uint32_t esp2;
+    uint32_t ss2;
+    uint32_t cr3;
+    uint32_t eip;
+    uint32_t eflags;
+    uint32_t eax;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t ebx;
+    uint32_t esp;
+    uint32_t ebp;
+    uint32_t esi;
+    uint32_t edi;
+    uint32_t es;
+    uint32_t cs;
+    uint32_t ss;
+    uint32_t ds;
+    uint32_t fs;
+    uint32_t gs;
+    uint32_t ldt;
+    uint16_t trap;
+    uint16_t iomap_base;
+} __attribute__((packed));
+
+void init_gdt();
+extern "C" void tss_flush();
+
+#endif

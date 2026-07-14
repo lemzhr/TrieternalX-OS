@@ -1,66 +1,50 @@
-/* File: src/kernel/kernel.cpp */
 
 #include "vga.h"
-#include "gdt.h"        // <-- Memastikan GDT di-include
-#include "interrupts.h" // <-- Memastikan IDT di-include
-#include "keyboard.h"   // <-- Memastikan Keyboard di-include
-#include "pic.h"        // <-- Memastikan PIC di-include
+#include "gdt.h"
+#include "interrupts.h"
+#include "keyboard.h"
+#include "pic.h"
+#include "shell.h"
+#include "fs.h"
+#include "services.h"
+#include "pmm.h"
+#include "vmm.h"
+#include "kheap.h"
+#include "timer.h"
+#include "scheduler.h"
+#include "syscall.h"
+#include "ata.h"
+#include "fat.h"
+#include "vbe.h"
+#include "logger.h"
+#include "mouse.h"
+#include "elf.h"
 
-/*
- * ==========================================================================
- * Helper Functions untuk Boot Log (Gaya Linux)
- * ==========================================================================
- */
-
-// Fungsi internal untuk mencetak status
-void print_status(const char *status, VGA::vga_color color)
-{
-    VGA::terminal.set_color(VGA::COLOR_WHITE, VGA::COLOR_BLACK);
-    VGA::terminal.write("[");
-    VGA::terminal.set_color(color, VGA::COLOR_BLACK);
-    VGA::terminal.write(status);
-    VGA::terminal.set_color(VGA::COLOR_WHITE, VGA::COLOR_BLACK);
-    VGA::terminal.write("] ");
-}
-
-// Mencetak pesan [ OK ] (Hijau)
 void boot_log_ok(const char *message)
 {
-    print_status(" OK ", VGA::COLOR_LIGHT_GREEN);
-    VGA::terminal.set_color(VGA::COLOR_LIGHT_GREY, VGA::COLOR_BLACK);
-    VGA::terminal.write(message);
-    VGA::terminal.write("\n");
+    klog_info("BOOT", message);
 }
 
-// Mencetak pesan [INFO] (Cyan)
 void boot_log_info(const char *message)
 {
-    print_status("INFO", VGA::COLOR_LIGHT_CYAN);
-    VGA::terminal.set_color(VGA::COLOR_LIGHT_GREY, VGA::COLOR_BLACK);
-    VGA::terminal.write(message);
-    VGA::terminal.write("\n");
+    klog_info("BOOT", message);
 }
 
-// Mencetak pesan [TODO] (Kuning/Coklat) untuk fitur skripsi Anda
 void boot_log_todo(const char *message)
 {
-    print_status("TODO", VGA::COLOR_LIGHT_BROWN);
-    VGA::terminal.set_color(VGA::COLOR_LIGHT_GREY, VGA::COLOR_BLACK);
-    VGA::terminal.write(message);
-    VGA::terminal.write("\n");
+    klog_warn("BOOT", message);
 }
 
-/*
- * ==========================================================================
- * Titik Masuk Kernel Utama (kmain)
- * ==========================================================================
- */
-extern "C" void kmain()
+extern "C" void kmain(uint32_t magic, uint32_t multiboot_addr)
 {
-    // 1. Inisialisasi terminal
+
+    if (magic == 0x2BADB002 && multiboot_addr != 0)
+    {
+        vbe_init((multiboot_info*)multiboot_addr);
+    }
+
     VGA::terminal.initialize();
 
-    // 2. Gambar Logo ASCII Art
     VGA::terminal.set_color(VGA::COLOR_LIGHT_GREEN, VGA::COLOR_BLACK);
     VGA::terminal.write("\n");
     VGA::terminal.write("================================================================================\n");
@@ -72,42 +56,60 @@ extern "C" void kmain()
     VGA::terminal.write("                                                 \n");
     VGA::terminal.write("================================================================================\n\n");
 
-    // 3. Tampilkan log boot "seperti Linux"
     boot_log_info("Bootloader menyerahkan kendali ke kernel...");
     boot_log_ok("Kernel C++ (kmain) berhasil dijalankan.");
     boot_log_ok("Driver VGA (Text Mode) berhasil dimuat.");
 
-    // 4. INISIALISASI GDT & INTERRUPT (INI YANG PENTING!)
-    //    Urutan ini sangat penting: GDT -> IDT -> PIC -> Keyboard
     init_gdt();
     init_idt();
-    PIC_remap(0x20, 0x28); // Remap PIC agar tidak konflik
+    PIC_remap(0x20, 0x28);
     init_keyboard();
+    mouse_init();
 
-    // 5. AKTIFKAN INTERRUPT SECARA GLOBAL (Sangat Penting!)
-    //    "sti" = Set Interrupt Flag. Ini "menghidupkan" hardware.
+    pmm_init(128 * 1024 * 1024);
+    vmm_init();
+    kheap_init();
+
+    timer_init(100);
+    scheduler_init();
+    syscall_init();
+
+    ata_init();
+    fat_init();
+
     asm volatile("sti");
 
-    // 6. Perbarui daftar status
+    scheduler_start();
+
+    fs_init();
+    services_init();
+
     VGA::terminal.write("\n");
     boot_log_info("Memulai inisialisasi sistem tahap menengah:");
     boot_log_ok("Inisialisasi GDT (Global Descriptor Table)...");
     boot_log_ok("Inisialisasi IDT (Interrupts)...");
     boot_log_ok("PIC (Interrupt Controller) di-remap.");
     boot_log_ok("Memuat Keyboard Driver...");
-    boot_log_todo("Implementasi Paging (Manajemen Memori)...");
-    boot_log_todo("Memulai Scheduler (Multitasking)...");
+    boot_log_ok("Inisialisasi Memory Manager (PMM, VMM, Heap)...");
+    boot_log_ok("Inisialisasi PIT Timer & Scheduler...");
+    boot_log_ok("Inisialisasi System Call Manager (int 0x80)...");
+    boot_log_ok("Inisialisasi VBE (VESA BIOS Extensions) Graphics...");
+    boot_log_ok("Inisialisasi ATA/IDE Disk Driver...");
+    boot_log_ok("Memuat FAT Filesystem Reader...");
+    boot_log_ok("Memuat Virtual Filesystem (RAM VFS)...");
+    boot_log_ok("Memulai System Services Manager...");
+    boot_log_ok("Memuat ELF Loader (Stage 1: ELF Parser)...");
+    boot_log_ok("Memuat Process Manager (Stage 2: Process Control)...");
     VGA::terminal.write("\n");
 
     boot_log_ok("Semua proses boot selesai. Menjalankan shell kernel.");
-    VGA::terminal.set_color(VGA::COLOR_WHITE, VGA::COLOR_BLACK);
-    VGA::terminal.write("\nTrieternalXOS > "); // Prompt shell sederhana
+    VGA::terminal.write("\n");
+    shell_init();
+    shell_prompt();
 
-    // Kernel tidak boleh berhenti
-    // Ini sekarang menjadi "idle loop"
     while (1)
     {
-        // Hentikan CPU sampai interrupt berikutnya (ketikan) datang
+
         asm volatile("hlt");
     }
 }

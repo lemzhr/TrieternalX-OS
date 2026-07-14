@@ -1,26 +1,58 @@
-; File: src/arch/x86/isrs.asm
-; Target: 32-bit (x86)
 
-; Beri tahu assembler bahwa ada fungsi C++ bernama 'keyboard_handler'
-; (Fungsi ini ada di file keyboard.cpp Anda)
 extern keyboard_handler
+extern timer_handler
+extern syscall_handler
 
-; Buat 'isr_stub_33' terlihat oleh file C++ lain (khususnya idt.cpp)
+global isr_stub_32
 global isr_stub_33
+global isr_stub_128
 
 section .text
-isr_stub_33:
-    ; Ini adalah fungsi yang akan dipanggil oleh CPU
-    ; saat interrupt keyboard (IRQ 1, yang kita petakan ke 33) terjadi.
 
-    ; 1. Simpan semua register CPU (agar tidak rusak oleh C++)
+isr_stub_32:
+
     pusha
 
-    ; 2. Panggil fungsi handler C++ kita
-    call keyboard_handler
+    push esp
+    call timer_handler
 
-    ; 3. Kembalikan semua register yang tadi disimpan
+    mov esp, eax
+
     popa
-    
-    ; 4. Kembali dari interrupt
+    iret
+
+isr_stub_33:
+    pusha
+    call keyboard_handler
+    popa
+    iret
+
+isr_stub_128:
+
+    pusha
+
+    push esp
+    call syscall_handler
+    add esp, 4
+
+    popa
+    iret
+
+extern page_fault_handler
+global isr_stub_14
+isr_stub_14:
+    pusha
+    push esp
+    call page_fault_handler
+    add esp, 4
+    popa
+    add esp, 4
+    iret
+
+extern mouse_handler
+global isr_stub_44
+isr_stub_44:
+    pusha
+    call mouse_handler
+    popa
     iret

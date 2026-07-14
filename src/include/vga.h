@@ -1,4 +1,3 @@
-/* File: src/include/vga.h */
 
 #ifndef VGA_H
 #define VGA_H
@@ -8,7 +7,6 @@
 namespace VGA
 {
 
-    // Enum untuk warna-warna dasar VGA
     enum vga_color
     {
         COLOR_BLACK = 0,
@@ -29,7 +27,6 @@ namespace VGA
         COLOR_WHITE = 15,
     };
 
-    // Kelas untuk mengelola terminal (tampilan)
     class Terminal
     {
     public:
@@ -38,6 +35,7 @@ namespace VGA
         void putchar(char c);
         void write(const char *data);
         void clear();
+        uint8_t get_color();
 
     private:
         void scroll();
@@ -54,6 +52,6 @@ namespace VGA
 
     extern Terminal terminal;
 
-} // namespace VGA
+}
 
-#endif // VGA_H
+#endif

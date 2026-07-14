@@ -2,15 +2,15 @@
 
 # === Variabel ===
 AS = nasm
-# Kita sepakat menggunakan i686-linux-gnu-
-CC = i686-linux-gnu-g++
-LD = i686-linux-gnu-ld
+# Menggunakan compiler native dengan flag 32-bit karena Fedora tidak menyediakan gcc-i686-linux-gnu secara default
+CC = g++
+LD = ld
 
 # Flags
 # -I$(SRC_DIR)/include memberitahu compiler di mana mencari file .h
-CFLAGS = -Wall -Wextra -std=c++17 -ffreestanding -fno-rtti -fno-exceptions -g -I$(SRC_DIR)/include
+CFLAGS = -m32 -Wall -Wextra -std=c++17 -ffreestanding -fno-rtti -fno-exceptions -g -I$(SRC_DIR)/include
 ASFLAGS = -f elf32
-LDFLAGS = -T scripts/linker.ld -nostdlib -g
+LDFLAGS = -m elf_i386 -T scripts/linker.ld -nostdlib -g
 
 # === File & Direktori ===
 SRC_DIR = src
@@ -29,10 +29,31 @@ ASM_OBJS = $(BUILD_DIR)/src/arch/x86/boot.o \
 # File C++
 CPP_OBJS = $(BUILD_DIR)/src/kernel/kernel.o \
            $(BUILD_DIR)/src/kernel/vga.o \
+           $(BUILD_DIR)/src/kernel/shell.o \
+           $(BUILD_DIR)/src/kernel/fs.o \
+           $(BUILD_DIR)/src/kernel/services.o \
+           $(BUILD_DIR)/src/kernel/api.o \
+           $(BUILD_DIR)/src/kernel/gui.o \
+           $(BUILD_DIR)/src/kernel/pmm.o \
+           $(BUILD_DIR)/src/kernel/vmm.o \
+           $(BUILD_DIR)/src/kernel/kheap.o \
+           $(BUILD_DIR)/src/kernel/scheduler.o \
+           $(BUILD_DIR)/src/kernel/elf.o \
+           $(BUILD_DIR)/src/kernel/syscall.o \
+           $(BUILD_DIR)/src/kernel/user_api.o \
+           $(BUILD_DIR)/src/kernel/fat.o \
+           $(BUILD_DIR)/src/kernel/ipc.o \
+           $(BUILD_DIR)/src/kernel/logger.o \
+           $(BUILD_DIR)/src/drivers/timer.o \
+           $(BUILD_DIR)/src/drivers/ata.o \
+           $(BUILD_DIR)/src/drivers/vbe.o \
            $(BUILD_DIR)/src/arch/x86/gdt.o \
            $(BUILD_DIR)/src/arch/x86/idt.o \
            $(BUILD_DIR)/src/drivers/pic.o \
-           $(BUILD_DIR)/src/drivers/keyboard.o
+           $(BUILD_DIR)/src/drivers/keyboard.o \
+           $(BUILD_DIR)/src/drivers/pci.o \
+           $(BUILD_DIR)/src/drivers/speaker.o \
+           $(BUILD_DIR)/src/drivers/mouse.o
 
 # Gabungkan semua file object
 OBJ_FILES = $(ASM_OBJS) $(CPP_OBJS)
@@ -47,34 +68,29 @@ GRUB_CFG = $(SYSROOT_DIR)/boot/grub/grub.cfg
 # Target default (yang dijalankan jika Anda hanya mengetik 'make')
 all: $(OS_ISO)
 
-# 1. Membuat OS ISO
-#    PENTING: Ini sekarang tergantung pada KERNEL_BIN dan GRUB_CFG
+# Membuat OS ISO
 $(OS_ISO): $(KERNEL_BIN) $(GRUB_CFG)
 	@echo "Membuat ISO..."
 	@mkdir -p $(SYSROOT_DIR)/boot/grub
 	@cp $(KERNEL_BIN) $(SYSROOT_DIR)/boot/kernel.bin
-	@grub-mkrescue -o $(OS_ISO) $(SYSROOT_DIR)
+	@grub2-mkrescue -o $(OS_ISO) $(SYSROOT_DIR)
 
-# 2. Link semua file .o menjadi satu kernel.bin
+
 $(KERNEL_BIN): $(OBJ_FILES)
 	@echo "Linking kernel..."
 	@mkdir -p $(BIN_DIR)
-	# PENTING: boot.o HARUS menjadi yang pertama di-link
 	@$(LD) $(LDFLAGS) -o $(KERNEL_BIN) $(BUILD_DIR)/src/arch/x86/boot.o $(filter-out $(BUILD_DIR)/src/arch/x86/boot.o, $(OBJ_FILES))
 
-# 3. Aturan kompilasi C++ (.cpp -> .o)
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.cpp
 	@echo "Kompilasi C++: $<"
 	@mkdir -p $(dir $@)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-# 4. Aturan assembly (.asm -> .o)
 $(BUILD_DIR)/src/%.o: $(SRC_DIR)/%.asm
 	@echo "Assembly: $<"
 	@mkdir -p $(dir $@)
 	@$(AS) $(ASFLAGS) $< -o $@
 
-# 5. ATURAN BARU: Membuat grub.cfg secara otomatis
 $(GRUB_CFG):
 	@echo "Membuat grub.cfg..."
 	@mkdir -p $(dir $@)
@@ -86,7 +102,6 @@ $(GRUB_CFG):
 	  echo '}'; \
 	) > $@
 
-# === Target Tambahan ===
 run: $(OS_ISO)
 	@echo "Menjalankan QEMU..."
 	@qemu-system-i386 -cdrom $(OS_ISO) -m 512M

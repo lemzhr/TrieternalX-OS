@@ -1,15 +1,12 @@
-/* File: src/arch/x86/gdt.cpp */
 
 #include "gdt.h"
 
-// Deklarasi GDT (3 entri: Null, Kernel Code, Kernel Data)
-gdt_entry_t gdt_entries[3];
+gdt_entry_t gdt_entries[6];
 gdt_ptr_t gdt_ptr;
+tss_entry_t tss_entry;
 
-// Fungsi C eksternal dari gdt_asm.asm
 extern "C" void gdt_flush(gdt_ptr_t *gdt_ptr);
 
-// Helper untuk mengatur satu entri GDT
 void gdt_set_gate(int32_t num, uint32_t base, uint32_t limit, uint8_t access, uint8_t gran)
 {
     gdt_entries[num].base_low = (base & 0xFFFF);
@@ -23,26 +20,35 @@ void gdt_set_gate(int32_t num, uint32_t base, uint32_t limit, uint8_t access, ui
     gdt_entries[num].access = access;
 }
 
-// Fungsi inisialisasi GDT utama
 void init_gdt()
 {
-    gdt_ptr.limit = (sizeof(gdt_entry_t) * 3) - 1;
+    gdt_ptr.limit = (sizeof(gdt_entry_t) * 6) - 1;
     gdt_ptr.base = (uint32_t)&gdt_entries;
 
-    // 1. Null Descriptor (Wajib) - Offset 0x00
     gdt_set_gate(0, 0, 0, 0, 0);
 
-    // 2. Kernel Code Segment - Offset 0x08
-    //    base=0, limit=4GB, access=0x9A (present, ring0, code, readable)
-    //    gran=0xCF (4KB granularity, 32-bit)
-    //    Ini adalah segmen yang dirujuk oleh IDT Anda (0x08)!
     gdt_set_gate(1, 0, 0xFFFFFFFF, 0x9A, 0xCF);
 
-    // 3. Kernel Data Segment - Offset 0x10
-    //    base=0, limit=4GB, access=0x92 (present, ring0, data, writable)
-    //    gran=0xCF (4KB granularity, 32-bit)
     gdt_set_gate(2, 0, 0xFFFFFFFF, 0x92, 0xCF);
 
-    // Muat GDT baru
+    gdt_set_gate(3, 0, 0xFFFFFFFF, 0xFA, 0xCF);
+
+    gdt_set_gate(4, 0, 0xFFFFFFFF, 0xF2, 0xCF);
+
+    uint32_t tss_base = (uint32_t)&tss_entry;
+    uint32_t tss_limit = sizeof(tss_entry) - 1;
+
+    for (uint32_t i = 0; i < sizeof(tss_entry); i++)
+    {
+        ((uint8_t*)&tss_entry)[i] = 0;
+    }
+
+    tss_entry.ss0 = 0x10;
+    tss_entry.esp0 = 0;
+
+    gdt_set_gate(5, tss_base, tss_limit, 0x89, 0x40);
+
     gdt_flush(&gdt_ptr);
+
+    tss_flush();
 }

@@ -1,10 +1,8 @@
-; File: src/arch/x86/boot.asm
-; Target: 32-bit (x86)
 
-; Mendefinisikan standar Multiboot untuk GRUB
 MODULEALIGN equ 1 << 0
 MEMINFO     equ 1 << 1
-FLAGS       equ MODULEALIGN | MEMINFO
+GRAPHICS    equ 1 << 2
+FLAGS       equ MODULEALIGN | MEMINFO | GRAPHICS
 MAGIC       equ 0x1BADB002
 CHECKSUM    equ -(MAGIC + FLAGS)
 
@@ -14,25 +12,31 @@ section .multiboot
     dd FLAGS
     dd CHECKSUM
 
-; Sediakan 16KB stack untuk kernel C++
+    dd 0, 0, 0, 0, 0
+    dd 0
+    dd 800
+    dd 600
+    dd 32
+
 section .bss
     align 16
     stack_bottom:
-    resb 16384 ; 16 KB
+    resb 16384
     stack_top:
 
 section .text
     global _start
-    extern kmain ; kmain() ada di file C++
+    extern kmain
 
 _start:
-    ; Pindahkan stack pointer ke atas stack kita
+
     mov esp, stack_top
 
-    ; Panggil kernel C++ kita (kmain)
+    push ebx
+    push eax
+
     call kmain
 
-    ; Hentikan CPU jika kernel selesai (seharusnya tidak pernah)
     cli
 .hang:
     hlt
