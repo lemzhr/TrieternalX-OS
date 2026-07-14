@@ -2,7 +2,7 @@
 
 > Sistem operasi freestanding 32-bit (x86 i686) yang ditulis dari nol menggunakan C++17 dan Assembly x86, berjalan di Protected Mode dengan GNU GRUB Multiboot.
 
-TrieternalX-OS adalah proyek sistem operasi yang dikembangkan untuk Tugas Akhir/Skripsi, mengimplementasikan berbagai komponen OS modern dari bootloader hingga GUI Desktop interaktif dengan window manager, termasuk dukungan VBE graphics 800x600, preemptive multitasking, virtual memory, filesystem FAT16/FAT32, driver hardware, dan web-based GUI simulator.
+TrieternalX-OS adalah proyek sistem operasi yang dikembangkan untuk Tugas Akhir/Skripsi, mengimplementasikan berbagai komponen OS modern dari bootloader hingga GUI Desktop interaktif dengan window manager, termasuk dukungan VBE graphics 800x600, preemptive multitasking, virtual memory, filesystem FAT16/FAT32, driver hardware.
 
 ---
 
